@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 #include <Wire.h>
 #include <WebServer.h>
@@ -72,11 +73,28 @@ void setup()
 
   server.send(200, "application/json", json); });
 
-  server.on("/api/led", []()
-            { server.send(
-                  200,
-                  "application/json",
-                  "{\"led\": " + String(led) + "}"); });
+  server.on("/api/led", HTTP_POST, []()
+            {
+              String body = server.arg("plain");
+              DynamicJsonDocument doc(1024);
+              DeserializationError error = deserializeJson(doc, body);
+
+              if (error)
+              {
+                server.send(
+                    400,
+                    "application/json",
+                    "{\"error\":\"Invalid JSON\"}");
+                return;
+              }else {
+                led = doc['brightness'];
+                ledcWrite(0, led);
+
+                server.send(
+                    200,
+                    "application/json",
+                    "{\"message\":\"LED brightness updated\"}");
+              } });
 
   server.begin();
 
